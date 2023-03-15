@@ -1,0 +1,57 @@
+image: docker:latest
+
+stages:
+    - build
+    - push
+
+variables:
+    DOCKER_BUILDKIT: 1
+    VARNISH_IMAGE: "${CI_REGISTRY_IMAGE}"
+    VARNISH_TMP_IMAGE: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+
+services:
+    - docker:dind
+
+before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+
+tmp_build_varnish:
+    stage: build
+    script:
+        - docker pull $VARNISH_IMAGE:latest || true
+        - docker pull $VARNISH_TMP_IMAGE || docker build --pull -t $VARNISH_TMP_IMAGE -f Dockerfile .
+        - docker push $VARNISH_TMP_IMAGE
+    only:
+        - branches
+        - tags
+
+push_varnish_branches:
+    stage: push
+    script:
+        - docker pull  $VARNISH_TMP_IMAGE
+        - docker tag   $VARNISH_TMP_IMAGE "$VARNISH_IMAGE:${CI_COMMIT_REF_NAME/\//-}"
+        - docker push "$VARNISH_IMAGE:${CI_COMMIT_REF_NAME/\//-}"
+    only:
+        - branches
+    except:
+        - master
+
+push_varnish_tags:
+    stage: push
+    script:
+        - docker pull  $VARNISH_TMP_IMAGE
+        - docker tag   $VARNISH_TMP_IMAGE "$VARNISH_IMAGE:$CI_COMMIT_TAG"
+        - docker push "$VARNISH_IMAGE:$CI_COMMIT_TAG"
+    only:
+        - tags
+
+push_varnish_latest:
+    stage: push
+    script:
+        - docker pull  $VARNISH_TMP_IMAGE
+        - docker tag   $VARNISH_TMP_IMAGE "$VARNISH_IMAGE:latest"
+        - docker push "$VARNISH_IMAGE:latest"
+    only:
+        - master
+
+# vim: set noet sw=4 ts=4:

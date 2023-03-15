@@ -1,0 +1,18 @@
+version: '3.7'
+
+services:
+  varnish:
+    image: registry.gitlab.com/opencity-labs/sito-istituzionale/varnish:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VARNISH_BACKEND_GRACE: 10m
+      VARNISH_BACKEND_HOST: php-nginx
+      VARNISH_BACKEND_PORT: 80
+      VARNISH_CACHE_STATIC_FILES: 1 #attivo ma non gestibile dal vcl iniettato
+      VARNISH_DEFAULT_TTL: 300s
+      VARNISH_ERRORS_GRACE: 60s
+    ports:
+      - 6081:6081
