@@ -50,6 +50,12 @@ sub vcl_recv {
         set req.http.X-Forwarded-Port = "80";
     }
 
+    if  (req.http.cookie ~ "(is_logged_in=true)") {
+        set req.http.X-Is-Logged-In = "true";
+    } else {
+        set req.http.X-Is-Logged-In = "false";
+    }
+
     call fos_purge_recv;
     call fos_ban_recv;
 
@@ -133,8 +139,8 @@ sub vcl_backend_response {
 	if (bereq.url ~ "^(/var/([^/]+/)?cache/public/|/var/cache/textoimage/|/design/|/share/icons/|/extension/[^/]+/design/|/var/([^/]+/)?storage/images/).+\.(gif|jpeg|jpg|swf|css|js|png|zip|gz|pdf|ico|bmp|tiff?|tga|svg|mp3|mp4|m4a|ogg|mov|avi|wmv)$") {
         unset beresp.http.Set-Cookie;
         if (beresp.status == 200 ) {
-            set beresp.ttl = 31d;
-            set beresp.http.X-Ttl = "31d";
+            set beresp.ttl = 1y;
+            set beresp.http.X-Ttl = "1y";
         }  else {
             set beresp.ttl = 10s;
             set beresp.http.X-Ttl = "10s";
@@ -283,6 +289,10 @@ sub fos_ban_deliver {
 }
 
 sub fos_user_context_recv {
+
+    if (req.http.X-Is-Logged-In == "false") {
+        return (hash);
+    }
 
     # Prevent tampering attacks on the hash mechanism
     if (req.restarts == 0
